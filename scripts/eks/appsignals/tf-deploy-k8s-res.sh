@@ -24,4 +24,4 @@ endpoint=$(kubectl get ingress -o json  --output jsonpath='{.items[0].status.loa
 
 # Force rollout restart of all deployments to ensure they pick up the latest images
 echo "Forcing rollout restart of all deployments to ensure they use the latest images"
-kubectl rollout restart deployment --namespace=$NAMESPACE
+kubectl rollout restart deployment/payment-service-dotnet --namespace=$NAMESPACE
