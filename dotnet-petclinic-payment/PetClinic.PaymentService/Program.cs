@@ -75,7 +75,24 @@ app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments/{paymentId}",
         string paymentId,
         [FromServices] IPetClinicContext context) =>
     {
-        var petResponse = await context.HttpClient.GetAsync($"http://customers-service/owners/{ownerId}/pets/{petId}");
+        try
+        {
+            var petResponse = await context.HttpClient.GetAsync($"http://customers-service/owners/{ownerId}/pets/{petId}");
+        }
+        catch (HttpRequestException ex)
+        {
+            // check exception message, if it contains "Connection refused" then return ServiceUnavailable
+            if (ex.Message.Contains("Pet not found, petId: "))
+            {
+                return Results.StatusCode((int)HttpStatusCode.BadRequest);
+            }
+
+            return Results.StatusCode((int)HttpStatusCode.ServiceUnavailable);
+        }
+        catch (Exception ex)
+        {
+            return Results.StatusCode((int)HttpStatusCode.InternalServerError);
+        }
 
         if (!petResponse.IsSuccessStatusCode)
         {
