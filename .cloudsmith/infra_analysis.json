@@ -1,0 +1,461 @@
+{
+  "org_name": "CloudSmith-Release-Safety",
+  "repo_name": "dotnet-petclinic-payment",
+  "repo_url": "https://github.com/CloudSmith-Release-Safety/dotnet-petclinic-payment",
+  "infrastructure_providers": [
+    {
+      "provider_id": "dynamodb_payment_table",
+      "resource_type": "DynamoDB",
+      "resource_identifier": "PetClinicPayment",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "infrastructure_type": "SDK-Direct",
+      "description": "DynamoDB table that stores payment information for pet clinic transactions",
+      "interfaces": [
+        {
+          "interface_type": "database",
+          "endpoint_pattern": "dynamodb.${region}.amazonaws.com",
+          "operations": ["GetItem", "PutItem", "UpdateItem", "Query", "Scan", "CreateTable", "DescribeTable", "DeleteTable"],
+          "authentication": "IAM"
+        }
+      ],
+      "configuration": {
+        "table_name": "PetClinicPayment",
+        "hash_key": "id",
+        "hash_key_type": "S",
+        "provisioned_throughput": {
+          "read_capacity_units": 5,
+          "write_capacity_units": 5
+        },
+        "auto_create": true
+      },
+      "security": {
+        "iam_authentication": true
+      },
+      "provider_type": "internal"
+    },
+    {
+      "provider_id": "ecr_repository",
+      "resource_type": "ECR",
+      "resource_identifier": "dotnet-petclinic-payment",
+      "file_path": "push-ecr.sh",
+      "infrastructure_type": "SDK-Direct",
+      "description": "ECR repository that stores the container images for the payment service",
+      "interfaces": [
+        {
+          "interface_type": "container_registry",
+          "endpoint_pattern": "${account_id}.dkr.ecr.${region}.amazonaws.com/dotnet-petclinic-payment",
+          "operations": ["PushImage", "PullImage"],
+          "authentication": "IAM"
+        }
+      ],
+      "configuration": {
+        "repository_name": "dotnet-petclinic-payment"
+      },
+      "provider_type": "internal"
+    },
+    {
+      "provider_id": "eks_cluster",
+      "resource_type": "EKS",
+      "resource_identifier": "petclinic-demo",
+      "file_path": ".github/workflows/eks-deploy.yml",
+      "infrastructure_type": "SDK-Direct",
+      "description": "EKS cluster where the payment service is deployed",
+      "interfaces": [
+        {
+          "interface_type": "kubernetes_cluster",
+          "endpoint_pattern": "https://api.${cluster_name}.${region}.eks.amazonaws.com",
+          "operations": ["DeployApplication", "GetKubeconfig"],
+          "authentication": "IAM"
+        }
+      ],
+      "configuration": {
+        "cluster_name": "petclinic-demo",
+        "region": "us-west-2"
+      },
+      "provider_type": "external"
+    },
+    {
+      "provider_id": "iam_role",
+      "resource_type": "IAM",
+      "resource_identifier": "${AWS_ROLE_TO_ASSUME}",
+      "file_path": ".github/workflows/eks-deploy.yml",
+      "infrastructure_type": "SDK-Direct",
+      "description": "IAM role used by GitHub Actions workflow to deploy to AWS",
+      "interfaces": [
+        {
+          "interface_type": "authentication",
+          "endpoint_pattern": "arn:aws:iam::${account_id}:role/${role_name}",
+          "operations": ["AssumeRole"],
+          "authentication": "OIDC"
+        }
+      ],
+      "configuration": {
+        "role_name": "${AWS_ROLE_TO_ASSUME}"
+      },
+      "provider_type": "external"
+    },
+    {
+      "provider_id": "rds_instance",
+      "resource_type": "RDS",
+      "resource_identifier": "petclinic-database.cufgmmyvvbb2.us-west-2.rds.amazonaws.com",
+      "file_path": "scripts/eks/appsignals/tf-deploy-k8s-res.sh",
+      "infrastructure_type": "SDK-Direct",
+      "description": "PostgreSQL RDS instance used by the pet clinic application",
+      "interfaces": [
+        {
+          "interface_type": "database",
+          "endpoint_pattern": "petclinic-database.cufgmmyvvbb2.us-west-2.rds.amazonaws.com:5432",
+          "operations": ["Connect"],
+          "authentication": "Password"
+        }
+      ],
+      "configuration": {
+        "host": "petclinic-database.cufgmmyvvbb2.us-west-2.rds.amazonaws.com",
+        "port": "5432",
+        "engine": "postgres"
+      },
+      "provider_type": "external"
+    }
+  ],
+  "application_consumers": [
+    {
+      "consumer_id": "payment_service",
+      "component_type": "service",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "language": "C#",
+      "description": "Payment service for the pet clinic application that manages payment records",
+      "resource_discovery": {
+        "method": "environment variables",
+        "configuration_files": ["appsettings.json", "appsettings.Development.json"]
+      },
+      "authentication": {
+        "method": "IAM role",
+        "role_references": ["EKS service account role"]
+      },
+      "sdk_usage": {
+        "sdk_type": "AWSSDK.DynamoDBv2",
+        "sdk_version": "3.7.304.4",
+        "clients": ["IAmazonDynamoDB", "DynamoDBContext"]
+      },
+      "package_dependencies": [
+        "AWSSDK.DynamoDBv2",
+        "AWSSDK.Extensions.NETCore.Setup",
+        "AWSSDK.SecurityToken",
+        "Steeltoe.Discovery.Eureka"
+      ],
+      "internal_dependencies": [
+        {
+          "resource_type": "DynamoDB",
+          "resource_name": "PetClinicPayment",
+          "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs"
+        }
+      ],
+      "external_dependencies": []
+    },
+    {
+      "consumer_id": "pet_clinic_context",
+      "component_type": "class",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "language": "C#",
+      "description": "Service context that manages DynamoDB interactions for the payment service",
+      "resource_discovery": {
+        "method": "dependency injection"
+      },
+      "authentication": {
+        "method": "IAM role"
+      },
+      "sdk_usage": {
+        "sdk_type": "AWSSDK.DynamoDBv2",
+        "clients": ["IAmazonDynamoDB", "DynamoDBContext"]
+      },
+      "package_dependencies": [
+        "AWSSDK.DynamoDBv2"
+      ],
+      "internal_dependencies": [
+        {
+          "resource_type": "DynamoDB",
+          "resource_name": "PetClinicPayment",
+          "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs"
+        }
+      ],
+      "external_dependencies": []
+    },
+    {
+      "consumer_id": "github_workflow",
+      "component_type": "workflow",
+      "file_path": ".github/workflows/eks-deploy.yml",
+      "language": "YAML",
+      "description": "GitHub Actions workflow that builds and deploys the application to AWS EKS",
+      "resource_discovery": {
+        "method": "environment variables",
+        "environment_variables": ["AWS_REGION", "TF_VAR_cluster_name"]
+      },
+      "authentication": {
+        "method": "OIDC",
+        "role_references": ["${{ secrets.AWS_ROLE_TO_ASSUME }}"]
+      },
+      "sdk_usage": {
+        "sdk_type": "AWS CLI",
+        "clients": ["ecr", "eks", "sts"]
+      },
+      "package_dependencies": [],
+      "internal_dependencies": [
+        {
+          "resource_type": "ECR",
+          "resource_name": "dotnet-petclinic-payment",
+          "file_path": "push-ecr.sh"
+        }
+      ],
+      "external_dependencies": [
+        {
+          "resource_type": "EKS",
+          "resource_name": "petclinic-demo",
+          "repository": "unknown"
+        },
+        {
+          "resource_type": "IAM",
+          "resource_name": "${AWS_ROLE_TO_ASSUME}",
+          "repository": "unknown"
+        }
+      ]
+    },
+    {
+      "consumer_id": "k8s_deployment",
+      "component_type": "deployment",
+      "file_path": "scripts/eks/appsignals/sample-app/payment-service-deployment.yaml",
+      "language": "YAML",
+      "description": "Kubernetes deployment configuration for the payment service",
+      "resource_discovery": {
+        "method": "environment variables"
+      },
+      "authentication": {
+        "method": "Kubernetes service account",
+        "role_references": ["visits-service-account"]
+      },
+      "package_dependencies": [],
+      "internal_dependencies": [
+        {
+          "resource_type": "ECR",
+          "resource_name": "dotnet-petclinic-payment",
+          "file_path": "push-ecr.sh"
+        }
+      ],
+      "external_dependencies": [
+        {
+          "resource_type": "EKS",
+          "resource_name": "petclinic-demo",
+          "repository": "unknown"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "connection_id": "payment_service_dynamodb_scan",
+      "consumer_id": "payment_service",
+      "provider_id": "dynamodb_payment_table",
+      "provider_resource_type": "DynamoDB",
+      "operation": "ScanAsync",
+      "access_type": "read",
+      "description": "Retrieves all payment records from DynamoDB for a specific pet",
+      "code_snippet": "var request = context.DynamoDbContext.ScanAsync<Payment>([]);",
+      "source_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "target_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "configuration_source": "dependency injection",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "payment_service_dynamodb_load",
+      "consumer_id": "payment_service",
+      "provider_id": "dynamodb_payment_table",
+      "provider_resource_type": "DynamoDB",
+      "operation": "LoadAsync",
+      "access_type": "read",
+      "description": "Loads a specific payment record from DynamoDB by its ID",
+      "code_snippet": "var payment = await context.DynamoDbContext.LoadAsync<Payment>(paymentId);",
+      "source_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "target_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "configuration_source": "dependency injection",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "payment_service_dynamodb_save",
+      "consumer_id": "payment_service",
+      "provider_id": "dynamodb_payment_table",
+      "provider_resource_type": "DynamoDB",
+      "operation": "SaveAsync",
+      "access_type": "write",
+      "description": "Saves a new payment record to DynamoDB",
+      "code_snippet": "await context.DynamoDbContext.SaveAsync(payment);",
+      "source_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "target_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "configuration_source": "dependency injection",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "pet_clinic_context_dynamodb_create_table",
+      "consumer_id": "pet_clinic_context",
+      "provider_id": "dynamodb_payment_table",
+      "provider_resource_type": "DynamoDB",
+      "operation": "CreateTableAsync",
+      "access_type": "admin",
+      "description": "Creates the DynamoDB table if it doesn't exist",
+      "code_snippet": "var response = await this.AmazonDynamoDBClient.CreateTableAsync(new CreateTableRequest {...});",
+      "source_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "target_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "configuration_source": "hardcoded",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "pet_clinic_context_dynamodb_describe_table",
+      "consumer_id": "pet_clinic_context",
+      "provider_id": "dynamodb_payment_table",
+      "provider_resource_type": "DynamoDB",
+      "operation": "DescribeTableAsync",
+      "access_type": "read",
+      "description": "Checks if the DynamoDB table exists",
+      "code_snippet": "await AmazonDynamoDBClient.DescribeTableAsync(new DescribeTableRequest { TableName = \"PetClinicPayment\" });",
+      "source_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "target_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "configuration_source": "hardcoded",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "pet_clinic_context_dynamodb_delete_table",
+      "consumer_id": "pet_clinic_context",
+      "provider_id": "dynamodb_payment_table",
+      "provider_resource_type": "DynamoDB",
+      "operation": "DeleteTableAsync",
+      "access_type": "admin",
+      "description": "Deletes the DynamoDB table during cleanup operations",
+      "code_snippet": "await AmazonDynamoDBClient.DeleteTableAsync(request);",
+      "source_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "target_file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/PetClinicContext.cs",
+      "configuration_source": "hardcoded",
+      "criticality": "medium",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "github_workflow_ecr_push",
+      "consumer_id": "github_workflow",
+      "provider_id": "ecr_repository",
+      "provider_resource_type": "ECR",
+      "operation": "PushImage",
+      "access_type": "write",
+      "description": "Pushes Docker image to ECR repository",
+      "code_snippet": "docker push ${REPOSITORY_PREFIX}/dotnet-petclinic-payment:latest",
+      "source_file_path": "push-ecr.sh",
+      "target_file_path": "push-ecr.sh",
+      "configuration_source": "environment variable",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "github_workflow_ecr_create_repo",
+      "consumer_id": "github_workflow",
+      "provider_id": "ecr_repository",
+      "provider_resource_type": "ECR",
+      "operation": "CreateRepository",
+      "access_type": "admin",
+      "description": "Creates ECR repository if it doesn't exist",
+      "code_snippet": "aws ecr create-repository --repository-name dotnet-petclinic-payment --region ${REGION} --no-cli-pager || true",
+      "source_file_path": "push-ecr.sh",
+      "target_file_path": "push-ecr.sh",
+      "configuration_source": "hardcoded",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    },
+    {
+      "connection_id": "github_workflow_eks_kubeconfig",
+      "consumer_id": "github_workflow",
+      "provider_id": "eks_cluster",
+      "provider_resource_type": "EKS",
+      "operation": "UpdateKubeconfig",
+      "access_type": "read",
+      "description": "Gets kubeconfig for EKS cluster access",
+      "code_snippet": "aws eks update-kubeconfig --name ${{ env.TF_VAR_cluster_name }} --region ${{ env.AWS_REGION }} --alias ${{ env.TF_VAR_cluster_name }}",
+      "source_file_path": ".github/workflows/eks-deploy.yml",
+      "target_file_path": "N/A",
+      "configuration_source": "environment variable",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": true,
+      "target_repo": "unknown"
+    },
+    {
+      "connection_id": "k8s_deployment_ecr_pull",
+      "consumer_id": "k8s_deployment",
+      "provider_id": "ecr_repository",
+      "provider_resource_type": "ECR",
+      "operation": "PullImage",
+      "access_type": "read",
+      "description": "Pulls Docker image from ECR repository during deployment",
+      "code_snippet": "image: 111122223333.dkr.ecr.us-west-2.amazonaws.com/dotnet-petclinic-payment:latest",
+      "source_file_path": "scripts/eks/appsignals/sample-app/payment-service-deployment.yaml",
+      "target_file_path": "push-ecr.sh",
+      "configuration_source": "hardcoded",
+      "criticality": "high",
+      "connection_type": "direct",
+      "cross_repo": false
+    }
+  ],
+  "architecture": {
+    "application_type": "microservice",
+    "infrastructure_pattern": "container-based",
+    "deployment_approach": "CI/CD",
+    "configuration_management": "environment variables and configuration files",
+    "critical_paths": [
+      {
+        "path_name": "payment_data_storage",
+        "description": "Storage and retrieval of payment data",
+        "involved_components": [
+          "payment_service",
+          "pet_clinic_context",
+          "dynamodb_payment_table"
+        ]
+      },
+      {
+        "path_name": "service_deployment",
+        "description": "Build and deployment pipeline for the service",
+        "involved_components": [
+          "github_workflow",
+          "ecr_repository",
+          "eks_cluster",
+          "k8s_deployment"
+        ]
+      }
+    ],
+    "security_model": {
+      "authentication": "IAM roles with least privilege permissions",
+      "authorization": "DynamoDB fine-grained access control",
+      "data_protection": "Standard DynamoDB encryption"
+    },
+    "cross_repo_dependencies": {
+      "provides_to": [],
+      "consumes_from": [
+        {
+          "repository": "unknown",
+          "resources": ["eks_cluster"]
+        },
+        {
+          "repository": "unknown",
+          "resources": ["iam_role"]
+        }
+      ],
+      "shared_infrastructure": true
+    }
+  }
+}
