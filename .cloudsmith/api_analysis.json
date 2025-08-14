@@ -1,0 +1,235 @@
+{
+  "org_name": "CloudSmith-Release-Safety",
+  "repo_name": "dotnet-petclinic-payment",
+  "repo_url": "https://github.com/CloudSmith-Release-Safety/dotnet-petclinic-payment",
+  "provided_apis": [
+    {
+      "type": "rest",
+      "endpoint": "/owners/{ownerId}/pets/{petId}/payments",
+      "method": "GET",
+      "service_name": "PaymentService",
+      "description": "Retrieves all payments for a specific pet",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "parameters": {
+        "path": [
+          {
+            "name": "ownerId",
+            "type": "integer",
+            "required": true,
+            "description": "ID of the pet owner"
+          },
+          {
+            "name": "petId",
+            "type": "integer",
+            "required": true,
+            "description": "ID of the pet"
+          }
+        ]
+      },
+      "responses": {
+        "200": {
+          "description": "List of payments for the specified pet",
+          "content_type": "application/json",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": "string",
+                "petId": "integer",
+                "paymentDate": "datetime",
+                "amount": "double",
+                "notes": "string"
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - pet not found",
+          "content_type": "application/json"
+        }
+      }
+    },
+    {
+      "type": "rest",
+      "endpoint": "/owners/{ownerId}/pets/{petId}/payments/{paymentId}",
+      "method": "GET",
+      "service_name": "PaymentService",
+      "description": "Retrieves a specific payment by ID for a pet",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "parameters": {
+        "path": [
+          {
+            "name": "ownerId",
+            "type": "integer",
+            "required": true,
+            "description": "ID of the pet owner"
+          },
+          {
+            "name": "petId",
+            "type": "integer",
+            "required": true,
+            "description": "ID of the pet"
+          },
+          {
+            "name": "paymentId",
+            "type": "string",
+            "required": true,
+            "description": "ID of the payment to retrieve"
+          }
+        ]
+      },
+      "responses": {
+        "200": {
+          "description": "Payment details",
+          "content_type": "application/json",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "id": "string",
+              "petId": "integer",
+              "paymentDate": "datetime",
+              "amount": "double",
+              "notes": "string"
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - pet not found",
+          "content_type": "application/json"
+        },
+        "404": {
+          "description": "Payment not found",
+          "content_type": "application/json"
+        },
+        "503": {
+          "description": "Service unavailable - customer service cannot be reached",
+          "content_type": "application/json"
+        },
+        "500": {
+          "description": "Internal server error",
+          "content_type": "application/json"
+        }
+      }
+    },
+    {
+      "type": "rest",
+      "endpoint": "/owners/{ownerId}/pets/{petId}/payments",
+      "method": "POST",
+      "service_name": "PaymentService",
+      "description": "Creates a new payment for a pet",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "parameters": {
+        "path": [
+          {
+            "name": "ownerId",
+            "type": "integer",
+            "required": true,
+            "description": "ID of the pet owner"
+          },
+          {
+            "name": "petId",
+            "type": "integer",
+            "required": true,
+            "description": "ID of the pet"
+          }
+        ],
+        "body": {
+          "type": "object",
+          "required": true,
+          "description": "Payment details",
+          "properties": {
+            "id": {
+              "type": "string",
+              "required": false,
+              "description": "Payment ID (generated automatically if not provided)"
+            },
+            "amount": {
+              "type": "double",
+              "required": true,
+              "description": "Payment amount"
+            },
+            "paymentDate": {
+              "type": "datetime",
+              "required": false,
+              "default": "Current UTC date/time",
+              "description": "Date when payment was made"
+            },
+            "notes": {
+              "type": "string",
+              "required": false,
+              "description": "Additional notes about the payment"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Payment created successfully",
+          "content_type": "application/json",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "id": "string",
+              "petId": "integer",
+              "paymentDate": "datetime",
+              "amount": "double",
+              "notes": "string"
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - pet not found or invalid payment data",
+          "content_type": "application/json"
+        }
+      }
+    },
+    {
+      "type": "rest",
+      "endpoint": "/clean-db",
+      "method": "DELETE",
+      "service_name": "PaymentService",
+      "description": "Cleans the payment database by removing and recreating the table",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "responses": {
+        "200": {
+          "description": "Database cleaned successfully",
+          "content_type": "application/json"
+        }
+      }
+    },
+    {
+      "type": "rest",
+      "endpoint": "/healthz",
+      "method": "GET",
+      "service_name": "PaymentService",
+      "description": "Health check endpoint for monitoring the service status",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "responses": {
+        "200": {
+          "description": "Service is healthy",
+          "content_type": "text/plain"
+        },
+        "503": {
+          "description": "Service is unhealthy",
+          "content_type": "text/plain"
+        }
+      }
+    }
+  ],
+  "consumed_apis": [
+    {
+      "type": "rest",
+      "service": "CustomersService",
+      "endpoint": "/owners/{ownerId}/pets/{petId}",
+      "method": "GET",
+      "description": "Retrieves pet details from the customers service to validate pet existence before processing payments",
+      "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
+      "expected_response": {
+        "id": "integer",
+        "name": "string",
+        "birthDate": "datetime"
+      }
+    }
+  ]
+}
