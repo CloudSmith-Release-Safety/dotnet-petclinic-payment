@@ -8,7 +8,7 @@
       "endpoint": "/owners/{ownerId}/pets/{petId}/payments",
       "method": "GET",
       "service_name": "PaymentService",
-      "description": "Retrieves a list of payments for a specific pet",
+      "description": "Retrieves all payments for a specific pet",
       "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
       "parameters": {
         "path": [
@@ -16,19 +16,19 @@
             "name": "ownerId",
             "type": "integer",
             "required": true,
-            "description": "The ID of the owner"
+            "description": "ID of the pet owner"
           },
           {
             "name": "petId",
             "type": "integer",
             "required": true,
-            "description": "The ID of the pet"
+            "description": "ID of the pet"
           }
         ]
       },
       "responses": {
         "200": {
-          "description": "Successfully retrieved payments for the pet",
+          "description": "List of payments for the specified pet",
           "content_type": "application/json",
           "schema": {
             "type": "array",
@@ -37,7 +37,7 @@
               "properties": {
                 "id": "string",
                 "petId": "integer",
-                "paymentDate": "string (datetime)",
+                "paymentDate": "string (DateTime)",
                 "amount": "number",
                 "notes": "string"
               }
@@ -54,7 +54,7 @@
       "endpoint": "/owners/{ownerId}/pets/{petId}/payments/{paymentId}",
       "method": "GET",
       "service_name": "PaymentService",
-      "description": "Retrieves a specific payment for a pet",
+      "description": "Retrieves a specific payment by ID for a pet",
       "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
       "parameters": {
         "path": [
@@ -62,32 +62,32 @@
             "name": "ownerId",
             "type": "integer",
             "required": true,
-            "description": "The ID of the owner"
+            "description": "ID of the pet owner"
           },
           {
             "name": "petId",
             "type": "integer",
             "required": true,
-            "description": "The ID of the pet"
+            "description": "ID of the pet"
           },
           {
             "name": "paymentId",
             "type": "string",
             "required": true,
-            "description": "The ID of the payment to retrieve"
+            "description": "ID of the payment to retrieve"
           }
         ]
       },
       "responses": {
         "200": {
-          "description": "Successfully retrieved the payment",
+          "description": "Payment details",
           "content_type": "application/json",
           "schema": {
             "type": "object",
             "properties": {
               "id": "string",
               "petId": "integer",
-              "paymentDate": "string (datetime)",
+              "paymentDate": "string (DateTime)",
               "amount": "number",
               "notes": "string"
             }
@@ -100,7 +100,7 @@
           "description": "Payment not found"
         },
         "503": {
-          "description": "Service unavailable - Customers service cannot be reached"
+          "description": "Service unavailable - Could not connect to customers service"
         },
         "500": {
           "description": "Internal server error"
@@ -112,7 +112,7 @@
       "endpoint": "/owners/{ownerId}/pets/{petId}/payments",
       "method": "POST",
       "service_name": "PaymentService",
-      "description": "Creates a new payment for a pet",
+      "description": "Creates a new payment for a specific pet",
       "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
       "parameters": {
         "path": [
@@ -120,53 +120,54 @@
             "name": "ownerId",
             "type": "integer",
             "required": true,
-            "description": "The ID of the owner"
+            "description": "ID of the pet owner"
           },
           {
             "name": "petId",
             "type": "integer",
             "required": true,
-            "description": "The ID of the pet"
+            "description": "ID of the pet"
           }
         ],
         "body": {
           "type": "object",
           "required": true,
-          "description": "Payment details to create",
+          "description": "Payment details",
           "properties": {
+            "id": {
+              "type": "string",
+              "required": false,
+              "description": "Payment ID (will be generated if not provided)"
+            },
             "amount": {
               "type": "number",
               "required": true,
-              "description": "The payment amount"
+              "description": "Payment amount"
+            },
+            "paymentDate": {
+              "type": "string (DateTime)",
+              "required": false,
+              "default": "current UTC time",
+              "description": "Date of the payment"
             },
             "notes": {
               "type": "string",
               "required": false,
               "description": "Additional notes for the payment"
-            },
-            "paymentDate": {
-              "type": "string (datetime)",
-              "required": false,
-              "description": "Date of the payment, defaults to current UTC time"
-            },
-            "id": {
-              "type": "string",
-              "required": false,
-              "description": "Optional payment ID, will be generated if not provided"
             }
           }
         }
       },
       "responses": {
         "200": {
-          "description": "Successfully created payment",
+          "description": "Payment created successfully",
           "content_type": "application/json",
           "schema": {
             "type": "object",
             "properties": {
               "id": "string",
               "petId": "integer",
-              "paymentDate": "string (datetime)",
+              "paymentDate": "string (DateTime)",
               "amount": "number",
               "notes": "string"
             }
@@ -182,11 +183,11 @@
       "endpoint": "/clean-db",
       "method": "DELETE",
       "service_name": "PaymentService",
-      "description": "Cleans the database by deleting and recreating the payment table",
+      "description": "Cleans the payment database by deleting and recreating the table",
       "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
       "responses": {
         "200": {
-          "description": "Database successfully cleaned"
+          "description": "Database cleaned successfully"
         }
       }
     },
@@ -195,7 +196,7 @@
       "endpoint": "/healthz",
       "method": "GET",
       "service_name": "PaymentService",
-      "description": "Health check endpoint for the service",
+      "description": "Health check endpoint for service monitoring",
       "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
       "responses": {
         "200": {
@@ -210,13 +211,14 @@
       "service": "CustomersService",
       "endpoint": "/owners/{ownerId}/pets/{petId}",
       "method": "GET",
-      "description": "Retrieves pet information to validate pet existence",
+      "description": "Retrieves pet details from the customers service to validate that the pet exists",
       "file_path": "dotnet-petclinic-payment/PetClinic.PaymentService/Program.cs",
       "expected_response": {
-        "pet": {
+        "status": 200,
+        "body": {
           "id": "integer",
           "name": "string",
-          "birthDate": "string (datetime)"
+          "birthDate": "string (DateTime)"
         }
       }
     }
