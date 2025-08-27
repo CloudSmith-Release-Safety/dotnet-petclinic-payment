@@ -64,7 +64,13 @@ app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments",
             payments.AddRange(page);
         } while (!request.IsDone);
 
-        return Results.Ok(payments.Where(x => x.PetId == petId).ToList());
+        return Results.Ok(payments.Where(x => x.PetId == petId).Select(p => new {
+            paymentId = p.Id,
+            petId = p.PetId,
+            paymentDate = p.PaymentDate,
+            totalAmount = p.Amount,
+            notes = p.Notes
+        }).ToList());
     }
 );
 
@@ -101,7 +107,13 @@ app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments/{paymentId}",
 
         var payment = await context.DynamoDbContext.LoadAsync<Payment>(paymentId);
 
-        return payment == null ? Results.NotFound() : Results.Ok(payment);
+        return payment == null ? Results.NotFound() : Results.Ok(new {
+            paymentId = payment.Id,
+            petId = payment.PetId,
+            paymentDate = payment.PaymentDate,
+            totalAmount = payment.Amount,
+            notes = payment.Notes
+        });
     }
 );
 
@@ -124,7 +136,13 @@ app.MapPost("/owners/{ownerId:int}/pets/{petId:int}/payments/",
 
         await context.DynamoDbContext.SaveAsync(payment);
 
-        return Results.Ok(payment);
+        return Results.Ok(new {
+            paymentId = payment.Id,
+            petId = payment.PetId,
+            paymentDate = payment.PaymentDate,
+            totalAmount = payment.Amount,
+            notes = payment.Notes
+        });
     }
 );
 
