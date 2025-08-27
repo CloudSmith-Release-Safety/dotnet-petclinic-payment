@@ -50,6 +50,7 @@ app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments",
         int petId,
         [FromServices] IPetClinicContext context) =>
     {
+        Console.WriteLine($"Fetching payments for owner {ownerId}, pet {petId}");
         var petResponse = await context.HttpClient.GetAsync($"http://customers-service/owners/{ownerId}/pets/{petId}");
 
         if (!petResponse.IsSuccessStatusCode)
