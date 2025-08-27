@@ -1,9 +1,13 @@
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Text;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using PetClinic.PaymentService;
 using Steeltoe.Discovery.Client;
 
@@ -21,6 +25,42 @@ builder.SetEurekaIps();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// BREAKING CHANGE: Add JWT Authentication (v7.0.0)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"] ?? "default-secret-key"))
+        };
+        
+        // BREAKING: New authentication events (requires client updates)
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                return context.Response.WriteAsync("{\"error\":\"authentication_failed\",\"message\":\"Invalid or expired token\"}");
+            },
+            OnChallenge = context =>
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                return context.Response.WriteAsync("{\"error\":\"unauthorized\",\"message\":\"Bearer token required\"}");
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
 builder.Services.AddAWSService<IAmazonDynamoDB>();
 builder.Services.AddSingleton<IDynamoDBContext, DynamoDBContext>();
@@ -31,7 +71,6 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -39,10 +78,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// BREAKING CHANGE: Authentication middleware must be added before authorization
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseHealthChecks("/healthz");
 
+// BREAKING CHANGE: All payment endpoints now require authentication
 app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments",
-    async (
+    [Authorize] async (
         int ownerId,
         int petId,
         [FromServices] IPetClinicContext context) =>
