@@ -1,4 +1,5 @@
 using Amazon.DynamoDBv2.DataModel;
+using System.Text.Json.Serialization;
 
 namespace PetClinic.PaymentService;
 
@@ -7,6 +8,7 @@ public record Payment
 {
     [DynamoDBHashKey]
     [DynamoDBProperty("id")]
+    [JsonPropertyName("paymentId")]
     public string? Id { get; set; }
 
     [DynamoDBProperty]
@@ -16,6 +18,7 @@ public record Payment
     public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
 
     [DynamoDBProperty]
+    [JsonPropertyName("totalAmount")]
     public required double Amount { get; set; }
 
     [DynamoDBProperty]
