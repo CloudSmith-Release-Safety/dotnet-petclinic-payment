@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using PetClinic.PaymentService;
 using Steeltoe.Discovery.Client;
 
+// REMOVED: Legacy payment endpoint mappings
+// This removes deprecated /api/v1/legacy-payment routes
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration
