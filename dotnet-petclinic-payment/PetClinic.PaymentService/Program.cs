@@ -41,7 +41,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHealthChecks("/healthz");
 
-app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments",
+app.MapGet("/api/v2/owners/{ownerId:int}/pets/{petId:int}/payments",
     async (
         int ownerId,
         int petId,
@@ -69,7 +69,7 @@ app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments",
     }
 );
 
-app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments/{paymentId}",
+app.MapGet("/api/v2/owners/{ownerId:int}/pets/{petId:int}/payments/{paymentId}",
     async (
         int ownerId,
         int petId,
@@ -106,7 +106,7 @@ app.MapGet("/owners/{ownerId:int}/pets/{petId:int}/payments/{paymentId}",
     }
 );
 
-app.MapPost("/owners/{ownerId:int}/pets/{petId:int}/payments/",
+app.MapPost("/api/v2/owners/{ownerId:int}/pets/{petId:int}/payments/",
     async (
         int ownerId,
         int petId,
